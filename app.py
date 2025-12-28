@@ -5,7 +5,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # ================== APP CONFIG ==================
 app = Flask(__name__)
-
 app.secret_key = os.getenv("SECRET_KEY", "fallback-secret-key")
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -42,8 +41,9 @@ def register():
         city=request.form['city'],
         email=email,
         password=generate_password_hash(request.form['password']),
-        role="user"
+        role="user"   # 🔐 نقش فقط از سرور
     )
+
     db.session.add(user)
     db.session.commit()
     return redirect('/')
@@ -75,13 +75,26 @@ def logout():
     session.clear()
     return redirect('/')
 
-# ================== REST API ==================
+# ================== USERS PAGE (ADMIN ONLY) ==================
+@app.route('/users')
+def users_list():
+    if 'user_id' not in session:
+        return redirect('/')
 
+    if session.get('user_role') != 'admin':
+        abort(403)
+
+    users = User.query.all()
+    return render_template('users.html', users=users)
+
+# ================== REST API ==================
 @app.route('/api')
 def api_home():
-    return jsonify({"message": "Flask REST API is working", "status": "OK"})
+    return jsonify({
+        "message": "Flask REST API is working",
+        "status": "OK"
+    })
 
-# 🔐 فقط admin اجازه دیدن همه کاربران
 @app.route('/api/users')
 def api_users():
     if session.get('user_role') != 'admin':
@@ -121,6 +134,7 @@ def api_login():
         return jsonify({"error": "JSON required"}), 400
 
     user = User.query.filter_by(email=data.get('email')).first()
+
     if user and check_password_hash(user.password, data.get('password')):
         return jsonify({
             "status": "success",
@@ -131,23 +145,13 @@ def api_login():
             }
         })
 
-    return jsonify({"status": "error", "message": "Invalid credentials"}), 401
-    # ==================
-    @app.route('/users')
-def users_list():
-    if 'user_id' not in session:
-        return redirect('/')
-
-    # فقط ادمین اجازه دیدن لیست
-    if session.get('user_role') != 'admin':
-        abort(403)
-
-    users = User.query.all()
-    return render_template('users.html', users=users)
-
+    return jsonify({
+        "status": "error",
+        "message": "Invalid credentials"
+    }), 401
 
 # ================== RUN ==================
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    
+    app.run(debug=True)
