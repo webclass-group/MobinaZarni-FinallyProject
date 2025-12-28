@@ -132,6 +132,19 @@ def api_login():
         })
 
     return jsonify({"status": "error", "message": "Invalid credentials"}), 401
+    # ==================
+    @app.route('/users')
+def users_list():
+    if 'user_id' not in session:
+        return redirect('/')
+
+    # فقط ادمین اجازه دیدن لیست
+    if session.get('user_role') != 'admin':
+        abort(403)
+
+    users = User.query.all()
+    return render_template('users.html', users=users)
+
 
 # ================== RUN ==================
 if __name__ == "__main__":
