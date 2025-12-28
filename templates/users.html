@@ -1,27 +1,15 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <title>لیست کاربران</title>
-    <style>
-        table {
-            border-collapse: collapse;
-            width: 80%;
-            margin: 20px auto;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background: #f0f0f0;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
 
-<h2 style="text-align:center;">لیست کاربران</h2>
+<h2 style="text-align:center">لیست کاربران</h2>
 
 <table>
     <tr>
@@ -46,4 +34,4 @@
 </table>
 
 </body>
-</html>
+</html>  

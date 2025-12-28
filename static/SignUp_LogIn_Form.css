@@ -17,10 +17,44 @@ body{
     background: linear-gradient(90deg, #e2e2e2, #c9d6ff);
 }
 
+.role-select {
+    width: 100%;
+    padding: 13px 20px;
+    border-radius: 8px;
+    border: none;
+    background: #eee;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    outline: none;
+    appearance: none; /* حذف فلش پیش‌فرض مرورگر */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer;
+    position: relative;
+}
+
+/* اضافه کردن فلش سفارشی */
+.role-select::after {
+    content: '▾';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #555;
+    font-size: 14px;
+}
+
+/* حالت فوکوس */
+.role-select:focus {
+    background: #e0e0e0;
+}
+
 .container{
     position: relative;
-    width: 850px;
-    height: 550px;
+    width: 900px;
+    height: 650px;
     background: #fff;
     margin: 20px;
     border-radius: 30px;

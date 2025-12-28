@@ -66,9 +66,24 @@ def dashboard():
         return redirect('/')
 
     if session['user_role'] == 'admin':
-        return f"🛡️ پنل ادمین | خوش آمدی {session['user_name']}"
-    else:
-        return f"👤 پنل کاربر | خوش آمدی {session['user_name']}"
+        return f"""
+        <h2>🛡️ پنل ادمین</h2>
+        <p>خوش آمدی {session['user_name']}</p>
+
+        <ul>
+            <li><a href="/users">📋 مشاهده لیست کاربران</a></li>
+            <li><a href="/api/users">🔗 API لیست کاربران (JSON)</a></li>
+            <li><a href="/logout">🚪 خروج</a></li>
+        </ul>
+        """
+
+    return f"""
+    <h2>👤 پنل کاربر</h2>
+    <p>خوش آمدی {session['user_name']}</p>
+    <a href="/logout">🚪 خروج</a>
+    """
+
+
 
 @app.route('/logout')
 def logout():
@@ -149,9 +164,38 @@ def api_login():
         "status": "error",
         "message": "Invalid credentials"
     }), 401
+@app.route('/debug/users')
+def debug_users():
+    users = User.query.all()
+    return jsonify([
+        {
+            "email": u.email,
+            "role": u.role
+        } for u in users
+    ])
+
 
 # ================== RUN ==================
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()
+        db.create_all()  # ایجاد جداول دیتابیس
+
+        # اضافه کردن ادمین پیش‌فرض اگر وجود نداشته باشد
+        if not User.query.filter_by(email="mobina13mo@gmail.com").first():
+            admin = User(
+                first_name="Mobina",
+                last_name="Zarni",
+                city="Zanjan",
+                email="mobina13mo@gmail.com",
+                password=generate_password_hash("admin123"),
+                role="admin"
+            )
+            db.session.add(admin)
+            db.session.commit()
+
     app.run(debug=True)
+
+
+
+
+
