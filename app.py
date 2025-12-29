@@ -2,16 +2,28 @@ import os
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from authlib.integrations.flask_client import OAuth
 
 # ================== APP CONFIG ==================
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "fallback-secret-key")
-
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'users.db')
+app.config['GOOGLE_CLIENT_ID'] = 'YOUR_GOOGLE_CLIENT_ID'
+app.config['GOOGLE_CLIENT_SECRET'] = 'YOUR_GOOGLE_CLIENT_SECRET'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+oauth = OAuth(app)
+
+google = oauth.register(
+    'google',
+    client_id=app.config['GOOGLE_CLIENT_ID'],
+    client_secret=app.config['GOOGLE_CLIENT_SECRET'],
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    refresh_token_url=None,
+    client_kwargs={'scope': 'openid profile email'},
+)
 
 # ================== MODEL ==================
 class User(db.Model):
@@ -41,49 +53,66 @@ def register():
         city=request.form['city'],
         email=email,
         password=generate_password_hash(request.form['password']),
-        role="user"   # 🔐 نقش فقط از سرور
+        role="user"
     )
 
     db.session.add(user)
     db.session.commit()
     return redirect('/')
 
-@app.route('/login', methods=['POST'])
+@app.route('/login')
 def login():
-    user = User.query.filter_by(email=request.form['email']).first()
+    redirect_uri = url_for('google_login', _external=True)
+    return google.authorize_redirect(redirect_uri)
 
-    if user and check_password_hash(user.password, request.form['password']):
-        session['user_id'] = user.id
-        session['user_role'] = user.role
-        session['user_name'] = user.first_name
-        return redirect('/dashboard')
+@app.route('/login/callback')
+def google_login():
+    token = google.authorize_access_token()
+    user_info = google.parse_id_token(token)
 
-    return "❌ ایمیل یا رمز عبور اشتباه است"
+    # Check if user exists in DB
+    user_in_db = User.query.filter_by(email=user_info['email']).first()
+    if user_in_db:
+        session['user_id'] = user_in_db.id
+        session['user_role'] = user_in_db.role
+        session['user_name'] = user_in_db.first_name
+    else:
+        # If user does not exist, create a new user
+        new_user = User(
+            first_name=user_info['given_name'],
+            last_name=user_info['family_name'],
+            email=user_info['email'],
+            password='',  # No password needed for Google login
+            role='user'   # Default role
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        session['user_id'] = new_user.id
+        session['user_role'] = new_user.role
+        session['user_name'] = new_user.first_name
+
+    return redirect('/dashboard')
 
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
         return redirect('/')
-
+    
     if session['user_role'] == 'admin':
         return f"""
         <h2>🛡️ پنل ادمین</h2>
-        <p>خوش آمدی {session['user_name']}</p>
-
+        <p>خوش آمدید {session['user_name']}</p>
         <ul>
             <li><a href="/users">📋 مشاهده لیست کاربران</a></li>
             <li><a href="/api/users">🔗 API لیست کاربران (JSON)</a></li>
             <li><a href="/logout">🚪 خروج</a></li>
         </ul>
         """
-
     return f"""
     <h2>👤 پنل کاربر</h2>
-    <p>خوش آمدی {session['user_name']}</p>
+    <p>خوش آمدید {session['user_name']}</p>
     <a href="/logout">🚪 خروج</a>
     """
-
-
 
 @app.route('/logout')
 def logout():
@@ -116,16 +145,14 @@ def api_users():
         abort(403)
 
     users = User.query.all()
-    return jsonify([
-        {
-            "id": u.id,
-            "first_name": u.first_name,
-            "last_name": u.last_name,
-            "city": u.city,
-            "email": u.email,
-            "role": u.role
-        } for u in users
-    ])
+    return jsonify([{
+        "id": u.id,
+        "first_name": u.first_name,
+        "last_name": u.last_name,
+        "city": u.city,
+        "email": u.email,
+        "role": u.role
+    } for u in users])
 
 @app.route('/api/users/<int:user_id>')
 def api_user_detail(user_id):
@@ -164,23 +191,21 @@ def api_login():
         "status": "error",
         "message": "Invalid credentials"
     }), 401
+
 @app.route('/debug/users')
 def debug_users():
     users = User.query.all()
-    return jsonify([
-        {
-            "email": u.email,
-            "role": u.role
-        } for u in users
-    ])
-
+    return jsonify([{
+        "email": u.email,
+        "role": u.role
+    } for u in users])
 
 # ================== RUN ==================
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()  # ایجاد جداول دیتابیس
+        db.create_all()  # Create database tables if not exist
 
-        # اضافه کردن ادمین پیش‌فرض اگر وجود نداشته باشد
+        # Add default admin user if not already in the database
         if not User.query.filter_by(email="mobina13mo@gmail.com").first():
             admin = User(
                 first_name="Mobina",
@@ -194,8 +219,3 @@ if __name__ == "__main__":
             db.session.commit()
 
     app.run(debug=True)
-
-
-
-
-

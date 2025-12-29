@@ -34,7 +34,6 @@ body{
     position: relative;
 }
 
-/* اضافه کردن فلش سفارشی */
 .role-select::after {
     content: '▾';
     position: absolute;
@@ -46,7 +45,6 @@ body{
     font-size: 14px;
 }
 
-/* حالت فوکوس */
 .role-select:focus {
     background: #e0e0e0;
 }
@@ -146,6 +144,11 @@ form{ width: 100%; }
 .social-icons{
     display: flex;
     justify-content: center;
+    position: absolute;
+    bottom: 100px;   /* فاصله از پایین */
+    right: 40px;    /* فاصله از راست */
+    display: flex;
+    gap: 12px;
 }
 
     .social-icons a{
@@ -156,6 +159,8 @@ form{ width: 100%; }
         font-size: 24px;
         color: #333;
         margin: 0 8px;
+        bottom: 100px;   /* فاصله از پایین */
+        right: 40px;    /* فاصله از راست */
     }
 
 .toggle-box{
